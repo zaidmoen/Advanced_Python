@@ -1,48 +1,99 @@
-# SOLID: كيف ترتّب التصميم؟
+# SOLID Principles — Practical Design Rules
 
-المبادئ أدوات لاتخاذ قرارات، مش شرط تعمل interface لكل كلاس. ابدأ بسيط واستخرج abstraction لما يكون في اختلاف أو سبب واضح للتغيير.
-كل ملف في `examples/solid` يحتوي تصميم مشكلة وتصميم محسّن قابلين للتشغيل.
+SOLID is a set of design guidelines, not a requirement to create an interface for every class. Start with a clear design and introduce an abstraction when there is a real variation, dependency, or reason to change.
 
-| المبدأ | المعنى | علامة المشكلة | المثال |
+```mermaid
+flowchart TD
+    A[One responsibility] --> B[Stable extension points]
+    B --> C[Safe substitutions]
+    C --> D[Small contracts]
+    D --> E[Inverted dependencies]
+```
+
+Every example in [`examples/solid/`](../examples/solid/) contains an intentionally problematic design and a more maintainable alternative.
+
+## The five principles
+
+| Principle | Meaning | Design smell | Example |
 |---|---|---|---|
-| SRP — Single Responsibility | وحدة الكود إلها سبب متماسك واحد للتغيير | قواعد التقرير وطباعة التقرير متشابكة | 01_srp.py |
-| OCP — Open/Closed | امتداد السلوك عبر عقد ثابت بدون تعديل المستهلك كل مرة | if/elif تتوسع لكل نوع جديد | 02_ocp.py |
-| LSP — Liskov Substitution | النوع البديل يحافظ على توقعات العقد | subtype يرفض عملية وعد بها الأب | 03_lsp.py |
-| ISP — Interface Segregation | المستهلك يعتمد على العمليات التي يحتاجها | قارئ مجبر يوفر كتابة لا يدعمها | 04_isp.py |
-| DIP — Dependency Inversion | السياسة العليا تعتمد على abstraction والتفاصيل تطبقه | الخدمة تنشئ تخزيناً محدداً بداخلها | 05_dip.py |
+| **SRP** — Single Responsibility | A unit has one cohesive reason to change. | Report rules and report formatting are tangled. | [`01_srp.py`](../examples/solid/01_srp.py) |
+| **OCP** — Open/Closed | Extend behavior through a stable contract. | An `if/elif` chain grows for every new type. | [`02_ocp.py`](../examples/solid/02_ocp.py) |
+| **LSP** — Liskov Substitution | A subtype preserves the base contract. | A subtype rejects an operation promised by its parent. | [`03_lsp.py`](../examples/solid/03_lsp.py) |
+| **ISP** — Interface Segregation | Consumers depend only on what they use. | A read-only client must implement writing. | [`04_isp.py`](../examples/solid/04_isp.py) |
+| **DIP** — Dependency Inversion | High-level policy depends on abstractions. | A service constructs a concrete storage class internally. | [`05_dip.py`](../examples/solid/05_dip.py) |
 
-## SRP
+## S — Single Responsibility Principle
 
-مش معناها «كل كلاس فيه method واحدة». تقرير قد يجمع عدة عمليات مرتبطة بالحساب، لكن تغيّر تنسيق العرض سبب مختلف للتغيير.
-في المثال فصلنا حساب المجموع عن تحويله لنص. اسأل: مين أو شو ممكن يطلب تغيير هذا الكود؟
+SRP does not mean “one method per class.” It means the responsibilities inside a unit are cohesive and share a reason to change.
 
-## OCP
+If a report class calculates totals and formats terminal output, two unrelated changes can force edits to the same class. Separate the calculation policy from the presentation policy.
 
-في النسخة الأولى إضافة خصم جديد تحتاج تعديل شرط داخل checkout. بالنسخة المحسنة الخصم كائن يوفر `apply`.
-إضافة `FixedDiscount` بتغيّر wiring عند التشغيل، لكن لا تحتاج تعديل `checkout`.
-مش المقصود منع إصلاح الكود أو تعديل المتطلبات؛ الحماية من التغيير تكون حول نقطة اختلاف متوقعة.
+Ask:
 
-## LSP
+> Who or what could request a change to this code?
 
-مش كفاية نفس اسم الدالة: حافظ على معنى النتائج، الشروط السابقة واللاحقة، والـ invariants.
-النوع الفرعي ما يقوّي preconditions أو يضعف postconditions المتفق عليها.
-مثال طائر أساسي يعد بـ fly، ثم بطريق يرمي خطأ: البطريق كسر العقد.
-الحل عقد `FlyingBird` لمن يستطيع الطيران، و`Penguin` خارج هذا العقد. الطائر لا يحتاج بالضرورة وعداً بالطيران.
-رمي exception ليس دائماً خرقاً: يعتمد على ما يسمح به العقد أصلاً.
+If different stakeholders or concerns can change different parts, the unit may contain multiple responsibilities.
 
-## ISP
+## O — Open/Closed Principle
 
-المثال يقارن واجهة قراءة/كتابة كبيرة مع `Reader` و`Writer` صغيرتين.
-المستهلك `display` يحتاج قراءة فقط؛ مصدر read-only يقدر يحقق هذا العقد بدون دالة write وهمية.
-هذا مبدأ عن احتياجات المستهلك، بينما SRP عن أسباب التغيير داخل الوحدة.
+A stable consumer should not require modification every time a new variation is introduced.
 
-## DIP
+In the first checkout design, adding a discount requires editing a growing conditional. In the improved design, every discount implements `apply`, and checkout uses the contract.
 
-`ReportService` تعتمد على `Reader` بدل إنشاء `MemoryReader` بداخلها. التجميع يحصل خارج الخدمة.
-Dependency Injection طريقة تمرير الاعتماد؛ DIP مبدأ اتجاه الاعتماد. تمرير concrete object بدون عقد واضح ليس وحده ضمان تصميم جيد.
-في بايثون `Protocol` مفيد للتوثيق والفحص الساكن، وduck typing ممكن يحقق المرونة أيضاً.
+Adding `FixedDiscount` changes the composition or wiring at startup, not the checkout algorithm itself. OCP does not prohibit fixing bugs or responding to changed requirements; it protects a known variation point from unnecessary edits.
 
-## جرّب بنفسك
+## L — Liskov Substitution Principle
 
-شغّل الملفات بالترتيب. لكل واحد: حدّد السطر الذي كان سيتغير عند إضافة نوع، ثم أضف نوعاً جديداً في التصميم المحسن.
-لا تحفظ الحروف فقط؛ اشرح تكلفة التصميم القديم وما الذي أصبح أسهل في الجديد.
+Inheritance is safe only when the subtype preserves the expectations of the base type.
+
+The subtype should not:
+
+- strengthen preconditions unexpectedly;
+- weaken postconditions;
+- violate important invariants;
+- change the meaning of a promised operation.
+
+A classic example is a base `Bird` contract that promises `fly()`, followed by a `Penguin` subtype that throws an exception. The design promised too much in the base abstraction. A better model separates `FlyingBird` from birds in general.
+
+An exception is not automatically an LSP violation. It depends on what the original contract explicitly permits.
+
+## I — Interface Segregation Principle
+
+Clients should not depend on methods they do not need.
+
+Instead of one large read/write interface, define focused contracts such as `Reader` and `Writer`. A display component that only reads data can then work with a read-only source without implementing a fake `write` method.
+
+ISP is about the size and shape of a contract from the consumer's perspective. SRP is about the reasons a unit changes.
+
+## D — Dependency Inversion Principle
+
+High-level policy should not depend directly on low-level implementation details. Both should depend on an abstraction.
+
+`ReportService` should receive a `Reader` contract rather than constructing `MemoryReader` inside itself. The composition root chooses the concrete implementation.
+
+```text
+Composition root → concrete adapter → abstraction ← high-level service
+```
+
+Dependency Injection is a technique for supplying a dependency from outside. DIP is the design principle about the direction of dependency. Passing a concrete object alone does not guarantee a good abstraction.
+
+In Python, `Protocol` can document the contract and support static analysis, while duck typing can provide the runtime flexibility.
+
+## How to use SOLID without overengineering
+
+1. Start with the simplest design that is correct.
+2. Identify a real source of change or a difficult dependency.
+3. Extract the smallest useful contract.
+4. Keep the consumer independent from the concrete detail.
+5. Add a test that protects the behavior.
+
+Do not add abstractions only because a principle has a name. Add them when they make change, testing, or reasoning easier.
+
+## Practice challenge
+
+Run the examples in order. For each one:
+
+1. Identify the line that would need to change when a new type is added.
+2. Add a new type to the improved design.
+3. Explain why the consumer did or did not need modification.
+4. Describe the trade-off introduced by the abstraction.
