@@ -1,33 +1,95 @@
-# تمارين — حاول قبل فتح الحل
+# Exercises — Build Before You Read the Solution
 
-## 1. ShoppingCart: الحالة والتغليف
+These exercises are intentionally small. Read the requirement, write the code, test the edge cases, and only then compare your work with [`solutions/`](../solutions/).
 
-اكتب كلاس سلة يحتوي `add(price)` وproperty اسمها `total`. الأسعار integer cents غير سالبة؛ ارفض bool والكسور والسالب.
-اعمل سلتين وتأكد أن إضافة سعر للأولى لا تغيّر الثانية. إضافة 100 و250 تعطي total = 350.
-إضافة -1 ترمي ValueError وتبقي total = 350. حل قابل للتشغيل في solutions/cart.py.
+## Exercise 1 — `ShoppingCart`: state and encapsulation
 
-## 2. Polymorphism بدون وراثة
+Create a cart with:
 
-اعمل `EmailPreview` و`SmsPreview`، لكل واحد `send(message)` يرجّع نصاً فقط بدون إرسال حقيقي.
-اكتب `notify(sender, message)` واحدة تستخدم الاثنين بدون isinstance أو if حسب النوع.
-أضف `PushPreview` بدون تعديل notify. الحل: solutions/notifications.py.
+- `add(price)` for adding a price in integer cents;
+- a read-only `total` property;
+- validation that rejects booleans, fractions, negative values, and non-integers.
 
-## 3. OCP: خصم جديد
+Acceptance criteria:
 
-ابدأ من أمثلة OCP. اكتب `ThresholdDiscount.apply(price)`:
-إذا السعر >= 1000 اخصم 100، غير هيك رجّع نفس السعر. لا تعدّل checkout.
-توقع: 999 ← 999، 1000 ← 900، 1200 ← 1100. الحل: solutions/discount.py.
+```python
+cart = ShoppingCart()
+cart.add(100)
+cart.add(250)
+assert cart.total == 350
+```
 
-## 4. مشروع الكتب: سياسة قبول التقييم
+Create a second cart and verify that changing the first cart does not change the second one. Adding `-1` must raise `ValueError` and leave the total unchanged.
 
-أضف `RatingPolicy` بعقد validate(rating)، وخلّي ReviewService تستقبل السياسة.
-التنفيذ الافتراضي يقبل 1–5، وتنفيذ ثانٍ يقبل 3–5. حافظ على تحقق Review الأساسي.
-استعمل نفس service مع السياستين. التقييم المرفوض لا يُخزّن.
-الهدف: OCP وDIP، مش توزيع if على عدة ملفات. الحل الكامل: solutions/policy_service.py.
+Reference: [`solutions/cart.py`](../solutions/cart.py).
 
-## أسئلة تتبّع سريعة
+## Exercise 2 — Polymorphism without inheritance
 
-1. لو skills قائمة على الكلاس، شو بصير بين نسختين؟
-2. لو أرجعت self._reviews مباشرة، كيف ممكن المستخدم يعدّل الحالة الداخلية؟
-3. لو ReviewService أنشأت MemoryReviewRepository داخلها، شو بصعّب الاختبار؟
-4. هل type hint يمنع تمرير object غلط وقت التشغيل؟ جرّب بمثال صغير.
+Create `EmailPreview` and `SmsPreview`. Each object must provide:
+
+```python
+send(message)
+```
+
+The method should return a preview string and must not perform real delivery.
+
+Then write one function:
+
+```python
+def notify(sender, message):
+    return sender.send(message)
+```
+
+The function must work with both senders without `isinstance` checks or type-specific branches. Add `PushPreview` without modifying `notify`.
+
+Reference: [`solutions/notifications.py`](../solutions/notifications.py).
+
+## Exercise 3 — OCP: add a discount
+
+Start from the OCP example and create `ThresholdDiscount` with this behavior:
+
+| Price | Result |
+|---:|---:|
+| 999 | 999 |
+| 1000 | 900 |
+| 1200 | 1100 |
+
+Do not modify the checkout algorithm. Add the new discount as another implementation of the existing contract.
+
+Reference: [`solutions/discount.py`](../solutions/discount.py).
+
+## Exercise 4 — A book rating policy
+
+Add a `RatingPolicy` contract with:
+
+```python
+validate(rating)
+```
+
+Update `ReviewService` so it receives the policy as a dependency.
+
+Implement two policies:
+
+1. A default policy that accepts ratings from 1 through 5.
+2. A stricter policy that accepts ratings from 3 through 5.
+
+Keep the basic `Review` validation. A rejected rating must never be stored. Use the same service with both policies.
+
+The goal is to practice OCP and DIP, not to distribute conditionals across unrelated files.
+
+Reference: [`solutions/policy_service.py`](../solutions/policy_service.py).
+
+## Quick tracing questions
+
+1. If `skills` is a class-level list, what happens when two objects modify it?
+2. If a repository returns its internal review list directly, how can a caller corrupt its state?
+3. If `ReviewService` creates `MemoryReviewRepository` internally, why is testing harder?
+4. Do type hints stop an invalid object from being passed at runtime? Prove your answer with a small experiment.
+
+## Completion checklist
+
+- [ ] The happy path works.
+- [ ] Invalid input raises the intended exception.
+- [ ] Failed operations do not partially mutate state.
+- [ ] The consumer does not need type-specific branching.
+- [ ] You can explain which SOLID principle the exercise demonstrates.
