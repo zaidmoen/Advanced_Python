@@ -1,59 +1,179 @@
-# OOP بالبايثون، خطوة خطوة
+# Object-Oriented Python — A Practical Guide
 
-## 1. Class وObject وself
+This guide explains the OOP ideas used throughout the repository. Read a section, run its matching example, then change one behavior and predict the result before executing it again.
 
-الـ class تعريف لنوع، والـ object نسخة منه إلها بياناتها. مثال: `Student` نوع، وزيد طالب محدد.
-`__init__` بجهّز بيانات النسخة بعد إنشائها؛ إنشاء النسخة نفسه مسؤولية `__new__` غالباً ما بتحتاج تعدّله.
-`self` هو الكائن الحالي، واسمه متعارف عليه وليس كلمة محجوزة. عند `student.describe()` بايثون بمرّر الكائن تلقائياً.
-Attribute بيانات مثل الاسم؛ method دالة مرتبطة بالكائن مثل عرض بياناته.
+```mermaid
+flowchart LR
+    A[Classes and objects] --> B[Encapsulation]
+    B --> C[Inheritance and polymorphism]
+    C --> D[Abstraction]
+    D --> E[Composition]
+    E --> F[Python object tools]
+```
 
-شغّل `examples/oop/01_classes.py`. توقّع الناتج قبل التشغيل: هل إضافة مهارة لزيد بتضيفها لسارة؟ ليش؟
+## 1. Classes, objects, and `self`
 
-## 2. Instance attributes وClass attributes
+A **class** defines a type. An **object** is a concrete instance of that type.
 
-`self.name` خاص بكل نسخة. المتغير داخل جسم الكلاس مثل `school` مشترك ما لم يتم حجبه بمتغير على النسخة.
-فخ مشهور: كتابة `skills = []` على مستوى الكلاس بتشارك نفس القائمة بين الطلاب.
-حط القائمة في `__init__` لتكون لكل نسخة قائمة مستقلة. تجنّب أيضاً default mutable argument مثل `skills=[]`.
+```python
+class Student:
+    def __init__(self, name: str) -> None:
+        self.name = name
+
+    def describe(self) -> str:
+        return f"Student: {self.name}"
+```
+
+```python
+student = Student("Zaid")
+print(student.describe())
+```
+
+`__init__` initializes an object after it has been created. `__new__` is responsible for creating the object itself, but most application code does not need to override it.
+
+`self` refers to the current instance. It is a naming convention, not a reserved keyword. When you write `student.describe()`, Python passes `student` to the method as `self`.
+
+Run [`01_classes.py`](../examples/oop/01_classes.py). Predict this before running it: if you add a skill to one student, does another student receive it?
+
+## 2. Instance attributes and class attributes
+
+An instance attribute belongs to one object:
+
+```python
+self.name = name
+```
+
+A class attribute is shared by instances unless an instance shadows it:
+
+```python
+class Student:
+    school = "Apex Academy"
+```
+
+Avoid mutable class attributes for per-object state:
+
+```python
+class Student:
+    skills = []  # Shared by every instance: usually a bug.
+```
+
+Create the list inside `__init__` instead:
+
+```python
+class Student:
+    def __init__(self) -> None:
+        self.skills: list[str] = []
+```
+
+The same warning applies to mutable default arguments such as `skills=[]`. Use `None` or `default_factory` instead.
 
 ## 3. Encapsulation
 
-اجمع الحالة والعمليات التي تحافظ على صحتها. في حساب بنكي، السحب لازم يمنع الرصيد السالب.
-`_balance` إشارة للمبرمج أنه تفصيل داخلي؛ مش منع وصول أمني.
-`__balance` يعمل name mangling لتقليل تصادم الأسماء مع الوراثة، وليس خصوصية مطلقة.
-`@property` يتيح قراءة محسوبة أو تحقق عند التعديل مع صيغة attribute عادية.
-المثال 02 يسمح بالقراءة ويجبر الاستخدام الطبيعي للتعديل على المرور بـ deposit/withdraw.
-بنستخدم أعداداً صحيحة لأصغر وحدة نقدية لتجنب أخطاء الكسور العشرية المالية.
+Encapsulation keeps data and the operations that protect its validity together. A bank account should not allow callers to create a negative balance directly.
 
-## 4. Inheritance وPolymorphism
+```python
+class BankAccount:
+    def __init__(self, balance: int = 0) -> None:
+        self._balance = balance
 
-الوراثة علاقة is-a: `Developer` نوع من `Employee`. الكلاس الفرعي ممكن يعمل override للسلوك.
-`super()` يتبع Method Resolution Order؛ في الوراثة البسيطة يستدعي تنفيذ الأب، وفي المتعددة مش بالضرورة الأب الذي تتخيله.
-Polymorphism: نفس النداء `describe()` يعطي سلوكاً حسب الكائن. مش شرط توجد وراثة؛ duck typing يعتمد على السلوك المتاح.
-شغّل المثال 03 وأضف نوعاً جديداً بدون تعديل حلقة الطباعة.
+    def deposit(self, amount: int) -> None:
+        if amount <= 0:
+            raise ValueError("Deposit must be positive")
+        self._balance += amount
+```
+
+In Python:
+
+- `_balance` is a convention that signals an internal detail.
+- `__balance` triggers name mangling, which reduces accidental name collisions.
+- Neither form is an absolute security boundary.
+- `@property` provides attribute-style access while allowing validation or computed values.
+
+The repository's encapsulation example uses integer cents instead of floating-point money values to avoid common decimal rounding surprises.
+
+Run [`02_encapsulation.py`](../examples/oop/02_encapsulation.py).
+
+## 4. Inheritance and polymorphism
+
+Inheritance models an **is-a** relationship. A `Developer` may be an `Employee`, so it can reuse or override employee behavior.
+
+```python
+class Employee:
+    def describe(self) -> str:
+        return "Employee"
+
+
+class Developer(Employee):
+    def describe(self) -> str:
+        return "Developer"
+```
+
+Polymorphism means the same operation can produce different behavior depending on the object:
+
+```python
+for employee in [Employee(), Developer()]:
+    print(employee.describe())
+```
+
+Polymorphism does not require inheritance. Python's duck typing allows an object to participate when it provides the required behavior.
+
+`super()` follows the Method Resolution Order. In simple inheritance it commonly reaches the parent implementation; in multiple inheritance it follows the next class in the MRO.
+
+Run [`03_inheritance.py`](../examples/oop/03_inheritance.py), then add a new employee type without changing the printing loop.
 
 ## 5. Abstraction
 
-اعرض العقد المهم وأخفِ التفاصيل. `ABC` و`@abstractmethod` يمنعان إنشاء subclass لم ينفذ abstract methods.
-التجريد يجاوب «شو الخدمة بتعمل؟»، والتغليف ينظم الحالة وكيف تتغيّر. المفهومان مكملان لبعض.
-في المثال 04 جميع الأشكال توفر `area()` لكن طريقة الحساب مختلفة.
-`Protocol` يصف structural interface لأدوات فحص الأنواع: لا يلزم أن يرث الكلاس منه.
-Type hints وProtocol لا يفرضان تحققاً تلقائياً وقت التشغيل.
+Abstraction exposes what a component promises while hiding how it performs the work.
+
+### Abstract base classes
+
+`ABC` and `@abstractmethod` define a nominal contract and prevent incomplete subclasses from being instantiated.
+
+### Protocols
+
+`Protocol` describes a structural interface. A class does not need to inherit from the protocol if it provides the required methods. Type checkers can use the protocol to analyze compatibility.
+
+Type hints and protocols do not automatically validate every value at runtime.
+
+In [`04_abstraction.py`](../examples/oop/04_abstraction.py), every shape provides `area()` while each shape calculates it differently.
 
 ## 6. Composition
 
-علاقة has-a: المكتبة فيها مصدر بيانات، مش هي مصدر بيانات. بنمرّر collaborator للكائن بدل وراثة تنفيذ لا يناسبه.
-المثال 05 يركّب خدمة ترحيب مع وسيلة إرسال. هذا يسهّل تبديل الوسيلة والاختبار.
-اختار الوراثة لما يكون النوع الفرعي بديلاً صحيحاً عن الأساسي؛ واختار التركيب لإعادة استخدام سلوك قابل للتبديل.
+Composition models a **has-a** relationship. Instead of making a service inherit from a sender, give the service a sender object:
 
-## 7. أدوات بايثون
+```python
+class GreetingService:
+    def __init__(self, sender) -> None:
+        self.sender = sender
+```
 
-- Instance method تستعمل `self` وحالة الكائن.
-- `@classmethod` تستقبل `cls` ومناسبة لـ alternate constructors. استخدام `cls(...)` يحترم الأنواع الفرعية.
-- `@staticmethod` لا تحتاج `self` أو `cls`. أحياناً دالة على مستوى الموديول أبسط.
-- `__repr__` تمثيل مفيد للمطور، و`__str__` تمثيل مقروء للمستخدم.
-- `__eq__` يحدد المساواة بالقيمة؛ `is` يفحص هوية الكائن وليس قيمته.
-- `dataclass` يولد مثل `__init__` و`__repr__` و`__eq__` افتراضياً، ولا يفحص type hints أو صحة القيم تلقائياً.
-- `field(default_factory=list)` ينشئ قائمة جديدة لكل instance.
-- `frozen=True` يمنع إعادة إسناد الحقول بالطريقة العادية، لكنه لا يجعل الكائنات القابلة للتعديل داخلها immutable.
+This makes the dependency visible, replaceable, and easy to fake in tests.
 
-شغّل المثال 06، ثم اشرح ليش كتابان متساويان بـ `==` ومختلفان بـ `is`.
+Prefer inheritance when the subtype is a valid substitute for the base type. Prefer composition when you want to assemble independent responsibilities or swap collaborators.
+
+Run [`05_composition.py`](../examples/oop/05_composition.py).
+
+## 7. Useful Python object tools
+
+- **Instance method:** receives `self` and works with object state.
+- **Class method:** receives `cls` and is useful for alternate constructors. Calling `cls(...)` preserves subclass behavior.
+- **Static method:** receives neither `self` nor `cls`; a module-level function may be clearer when no class context is needed.
+- **`__repr__`:** developer-oriented representation.
+- **`__str__`:** user-oriented representation.
+- **`__eq__`:** value equality. `is` checks object identity.
+- **`dataclass`:** can generate `__init__`, `__repr__`, and `__eq__` from declared fields.
+- **`field(default_factory=list)`:** creates a fresh list for every instance.
+- **`frozen=True`:** prevents normal field reassignment, but does not make nested mutable objects immutable.
+
+Run [`06_python_tools.py`](../examples/oop/06_python_tools.py). Explain why two books can be equal with `==` while being different objects with `is`.
+
+## Practice checklist
+
+Before moving to SOLID, make sure you can explain:
+
+1. The difference between a class and an object.
+2. Why mutable class attributes can leak state between instances.
+3. The difference between encapsulation and abstraction.
+4. When composition is safer than inheritance.
+5. How `super()` behaves in a multiple-inheritance MRO.
+6. The difference between `==` and `is`.
